@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --env-file=.env --exec tsx src/server.ts"
+    "dev": "nodemon --env-file=.env --exec tsx src/server.ts",
+    "build": "tsc",
+    "start": "node --env-file=.env build/server.js"
   },
   "keywords": [],
   "author": "",
