@@ -3,6 +3,9 @@ import { serializerCompiler , validatorCompiler , ZodTypeProvider , jsonSchemaTr
 import {fastifyCors} from '@fastify/cors'
 import {fastifySwagger} from '@fastify/swagger'
 import {fastifySwaggerUi} from '@fastify/swagger-ui'
+import {routes} from './routes.js'
+import {mongodb , redisdb} from './db/bd.js'
+
 
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -28,6 +31,17 @@ app.register(fastifySwaggerUi ,{
     routePrefix: '/docs',
 })
 
-app.listen({port: Number(process.env.PORT) || 3000 , host: '0.0.0.0'}, () =>{
-    console.log('Servidor rodando na porta '+ (Number(process.env.PORT) || 3000))
-})
+try{
+    app.register(mongodb)
+
+    app.register(redisdb)
+
+    app.register(routes)
+
+
+    app.listen({port: Number(process.env.PORT) || 3000 , host: '0.0.0.0'}, () =>{
+        console.log('Servidor rodando na porta '+ (Number(process.env.PORT) || 3000))
+    })
+}catch(err){
+    console.error('Erro ao iniciar o servidor:', err)
+}
