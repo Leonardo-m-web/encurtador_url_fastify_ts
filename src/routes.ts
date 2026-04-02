@@ -1,10 +1,6 @@
-import type {FastifyTypeInstance} from "./types.ts";
+import type {FastifyTypeInstance} from "./types.js";
 import {z} from 'zod'
-import Hashids from 'hashids'
-import { REPL_MODE_SLOPPY } from "node:repl";
-
-//configura o hashID (tamanho de 6 caracteres e usando base 62) para os IDs das urls curtas
-const hashids = new Hashids(process.env.HASHIDS_SALT || 'salt' , 6 , 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890' )
+import {getClicks, getURL, shortURL} from "./services.js";
 
 //função das rotas
 export async function routes(app: FastifyTypeInstance){
@@ -34,20 +30,11 @@ export async function routes(app: FastifyTypeInstance){
 
         const {url} = request.body
 
-        //forma o ID com o hashID usando a data atual
-        const id = hashids.encode(Date.now())
-
         try{
-            //salva no mongoDB (usando decorate do fastify) as URLs (curta como _id e a original) e a quantidade de clicks (default 0)
-            const newUrl = new app.mongo({
-                _id: id,
-                url: url,
-                quantidade_clicks: 0
-            })
-            await newUrl.save()
+            const id:string|null = await shortURL(app, url) //função que retorna o id da url curta
 
             //retorna a URL curta 
-            return reply.status(201).send({url: `${request.protocol}://${request.hostname}:${request.port}/${id}`})
+            return reply.status(201).send({url: `${request.protocol}://${request.host}/${id}`})
 
         }catch(err:any){
             return reply.status(500).send({message: 'Erro interno do servidor' + (Boolean(process.env.development) ? err.message : '')})
@@ -84,24 +71,10 @@ export async function routes(app: FastifyTypeInstance){
         const {id} = request.params 
 
         try{
-            //verifica se a URL original esta armazenada em cache
-            let urlOriginal:string|null = await app.redis.get(id)
+            let urlOriginal:string|null = await getURL(app , id) //função que procura a URL original no bd
 
-            //se não estiver no cache, busca no mongoDB e armazena no cache por 24 horas
-            if(!urlOriginal){
-                const result = await app.mongo.findById(id).select('url') //busca no mongoDB (so a URL)
-                urlOriginal = result?.url
-                
-                if(!urlOriginal){
-                    return reply.status(404).send({message: 'ID não encontrado'})
-                }
+            if(!urlOriginal) return reply.status(404).send({message: 'ID não encontrado'})
 
-                await app.redis.set(id, urlOriginal , {EX: 60 * 60 * 24 }) //armazena em cache (redis) pro 24h
-            }
-
-            //atualiza a quantidade de clicks
-            await app.mongo.updateOne({_id: id} , {$inc: {quantidade_clicks: 1}})
-            
             //redireciona pra url original
             return reply.redirect(urlOriginal, 302)
         }catch(err:any){
@@ -141,16 +114,14 @@ export async function routes(app: FastifyTypeInstance){
         const {id} = request.params
 
         try{
-            const result = await app.mongo.findById(id).select('quantidade_clicks') //busca no mongoDB (so a quantidade de clicks)
+            const result = await getClicks(app, id) //função que retorna a quantidade de cliks
 
             //verifica se existe
-            if(!result){
+            if(!result.quantidade_clicks){
                 return reply.status(404).send({message: 'ID não encontrado'})
             }
             
-            const clicks:number = result?.quantidade_clicks
-            
-            return reply.status(200).send({message: 'Quantidade de clicks retornada com sucesso' , clicks: clicks})
+            return reply.status(200).send({message: 'Quantidade de clicks retornada com sucesso' , clicks: result.quantidade_clicks})
         }catch(err:any){
             reply.status(500).send({message: 'Erro interno do servidor ' + (Boolean(process.env.development) ? err.message : '')})
         }
