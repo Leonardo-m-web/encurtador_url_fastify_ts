@@ -7,13 +7,14 @@ import {routes} from './routes.js'
 import {mongodb , redisdb} from './db/bd.js'
 
 //inicia uma instancia do fastify e permite que o zod seja usado para a validação e serialização dos dados
-const app = fastify().withTypeProvider<ZodTypeProvider>()
+export const app = fastify().withTypeProvider<ZodTypeProvider>()
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
 
 //configura o CORS
 app.register(fastifyCors , {
-    origin: '*'
+    origin: '*',
+    methods: ['GET' , 'POST']
 })
 
 //configura o swagger pra documentação

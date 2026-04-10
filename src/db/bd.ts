@@ -3,17 +3,19 @@ import fp from 'fastify-plugin'
 import mongoose from 'mongoose'
 import redis , { RedisClientType } from 'redis'
 
+//schema do mongoDB para as URLs
+export const urlSchema = new mongoose.Schema({
+    _id: String,
+    url: String,
+    quantidade_clicks: Number,
+    data_criacao: ({type: Date , default: Date.now})
+})
 
 //pluggin que inicializa o mongoDB
 export const mongodb = fp(async (app: FastifyInstance) => {
     mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/encurtador_de_url')
 
-    const URL = mongoose.model('URL' , new mongoose.Schema({
-        _id: String,
-        url: String,
-        quantidade_clicks: Number,
-        data_criacao: ({type: Date , default: Date.now})
-    }) , 'urls')
+    const URL = mongoose.model('URL' , urlSchema , 'urls')
 
     app.decorate('mongo' , URL) //adiciona o model a um pluggin global
 })

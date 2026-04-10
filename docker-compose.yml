@@ -1,0 +1,43 @@
+services:
+  app: 
+    build: ./
+    ports:
+      - "3000:3000"
+    environment:
+      - DEVELOPMENT=false
+      - PORT=3000
+      - HASHIDS_SALT=${HASHIDS_SALT}
+      - MONGO_URL=${MONGO_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_started
+    networks:
+      - public
+      - private
+  
+  redis:
+    image: redis:alpine
+    container_name: redis
+    command: redis-server --requirepass ${REDIS_PASS} --appendonly yes
+    networks:
+      - private
+  
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
+    networks:
+      - private
+
+
+networks:
+  public:
+    driver: bridge
+  private:
+    driver: bridge
+    internal: true
